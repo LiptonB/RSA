@@ -1,5 +1,5 @@
 .PHONY: all
-all: keygen
+all: keygen encrypt
 
 keygen: keygen.c
 	gcc -o keygen keygen.c -lcrypto

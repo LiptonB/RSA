@@ -16,15 +16,17 @@ void multiply(unsigned char *out, const int out_length,
 				int C;
 				int intermediate;
 				int index;
+        int offset = out_length - in1_length - in2_length + 1;
+
 				memset(out, 0, out_length);
 				for (i = in2_length-1; i >= 0; i--) {
 					C = 0;
 					for (j = in1_length-1; j >= 0; j--) {
-									intermediate = out[i+j] + in1[j]*in2[i] + C;
-									C = intermediate >> sizeof(*out);
-									out[i+j] = intermediate;
+									intermediate = out[i+j+offset] + in1[j]*in2[i] + C;
+									C = intermediate >> 8*sizeof(*out);
+									out[i+j+offset] = intermediate;
 					}
-					out[i+in1_length] = C;
+					out[i+offset-1] = C;
 				}
 }
 
@@ -38,9 +40,9 @@ void rsa_perform(const unsigned char *e, const int e_length,
 }
 
 int main(int argc, char *argv[]) {
-	unsigned char a[] = {0x12, 0x34};
-	unsigned char b[] = {0x01, 0x03};
-	unsigned char out[4];
+	unsigned char a[] = {0x12, 0x34, 0xab, 0xff};
+	unsigned char b[] = {0x01, 0x03, 0x72, 0xea};
+	unsigned char out[sizeof(a)+sizeof(b)];
 	int i;
 
 	multiply(out, sizeof(out), a, sizeof(a), b, sizeof(b));
