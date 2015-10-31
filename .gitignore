@@ -28,6 +28,8 @@
 *.x86_64
 *.hex
 keygen
+test
+encrypt
 
 # Debug files
 *.dSYM/

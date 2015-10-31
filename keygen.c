@@ -9,7 +9,7 @@ void print_array(char *name, BIGNUM *bn) {
   if ((buf = malloc(BN_num_bytes(bn))) != NULL) {
     len = BN_bn2bin(bn, buf);
 
-    printf("char %s[] = {", name);
+    printf("unsigned char %s[] = {", name);
     for (i = 0; i < len; i++) {
       printf("0x%02x", buf[i]);
       if (i < len-1) {
