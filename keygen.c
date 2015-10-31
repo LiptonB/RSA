@@ -27,5 +27,10 @@ int main(int argc, char *argv[]) {
   print_array("n", keypair->n);
   print_array("e", keypair->e);
   print_array("d", keypair->d);
+  print_array("p", keypair->d);
+  print_array("q", keypair->d);
+  print_array("dmp1", keypair->d);
+  print_array("dmq1", keypair->d);
+  print_array("iqmp", keypair->d);
   return 0;
 }
