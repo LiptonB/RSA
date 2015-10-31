@@ -1,21 +1,25 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include "key.c"
+
+// Set up sizes appropriately for architecture
+typedef uint16_t word;    // size of a multiplication output
+typedef uint8_t halfword; // size of a multiplication input
 
 struct bignum {
 				unsigned char *num;
 				unsigned int length;
 };
 
-void multiply(unsigned char *out, const int out_length,
-								const unsigned char *in1, const int in1_length,
-								const unsigned char *in2, const int in2_length) {
+void multiply(halfword *out, const int out_length,
+								const halfword *in1, const int in1_length,
+								const halfword *in2, const int in2_length) {
 				int i;
 				int j;
-				int C;
-				int intermediate;
-				int index;
+				halfword C;
+				word intermediate;
         int offset = out_length - in1_length - in2_length + 1;
 
 				memset(out, 0, out_length);
