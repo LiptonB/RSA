@@ -41,32 +41,60 @@ void bignum_multiply(bignum *out, const bignum *in1, const bignum *in2) {
   }
 }
 
-bool maybe_subtract(bignum *out, bignum *n, int byteshift, int bitshift) {
-  int index;
-  halfword combined;
-  halfwordsigned result;
-
-  // TODO: it's not going to work to go from MSB to LSB, because of borrowing
-  for (index = 0; index < n->length; index++) {
-    combined = n->num[index] << bitshift | n->num[+1] >> (8-bitshift);
-    result = out->num[index] - combined;
-    if (result < 0) {
-
-    }
-  }
+void bignum_copy(bignum *dst, bignum *src) {
+  // TODO: this might be wrong if length is measured in halfwords, not bytes
+  memcpy(&dst->num[dst->length - src->length], src->num, src->length);
+  memset(dst->num, 0, dst->length - src->length);
 }
 
-void find_topbit(bignum *num, int *topbyte, int *topbit) {
+int maybe_subtract(bignum *out, bignum *n, bignum *temp,
+    int byteshift, int bitshift) {
+  int index;
+  int out_index;
+  halfword borrow;
+  halfword combined;
+  halfwordsigned result = 0;
+
+  assert(out->length >= n->length + byteshift);
+  assert(temp->length == out->length);
+
+  bignum_copy(temp, out);
+
+  for (index = n->length-1; index >= 0; index--) {
+    combined = n->num[index] << bitshift;
+    if (index < n->length-1) {
+      combined |= n->num[index+1] >> (8-bitshift);
+    }
+
+    borrow = 0;
+    out_index = out->length - n->length - byteshift + index;
+    result = out->num[out_index] - combined - borrow;
+    if (result < 0) {
+      result += 1<<(8*sizeof(halfword));
+      borrow = 1;
+    }
+    out->num[out_index] = result;
+  }
+
+  // If the result is negative, we need to undo the subtraction
+  if (borrow == 1) {
+    bignum_copy(out, temp);
+  }
+
+  return !borrow;
+}
+
+void find_topbit(bignum *bn, int *topbyte, int *topbit) {
   halfword temp;
 
-  for (*topbyte = 0; *topbyte < num->length; *topbyte++) {
-    if (out->num[*topbyte] != 0) {
+  for (*topbyte = 0; *topbyte < bn->length; (*topbyte)++) {
+    if (bn->num[*topbyte] != 0) {
       break;
     }
   }
 
-  temp = out->num[*topbyte];
-  for (*topbit = 7; *topbit >= 0; *topbit--) {
+  temp = bn->num[*topbyte];
+  for (*topbit = 7; *topbit >= 0; (*topbit)--) {
     if (temp & (1<<*topbit)) {
       break;
     }
@@ -78,16 +106,23 @@ void find_topbit(bignum *num, int *topbyte, int *topbit) {
  *  n: bignum of length k
  *  out: bignum of at least length 2k (will occupy no more than k bytes on
  *    completion)
+ *  temp: bignum of the same length as out
  */
-void bignum_mod(bignum *out, bignum *t, bignum *n) {
+void bignum_mod(bignum *out, bignum *t, bignum *n, bignum *temp) {
   // TODO: byteshift should probably become haflwordshift, etc., but we'll need
-  // to be able to read an arbitrary halfword out of a bignum
+  // to be able to read an arbitrary halfword out of a bignum - or can we do
+  // that already?
   int byteshift;
   int bitshift;
   int out_topbyte;
   int out_topbit;
   int n_topbyte;
   int n_topbit;
+
+  assert(t->length <= n->length * 2);
+  assert(out->length >= n->length *2);
+  assert(temp->length == out->length);
+
   bignum_copy(out, t);
 
   find_topbit(out, &out_topbyte, &out_topbit);
@@ -100,7 +135,7 @@ void bignum_mod(bignum *out, bignum *t, bignum *n) {
   }
 
   while(byteshift > 0 && bitshift > 0) {
-    maybe_subtract(out, n, byteshift, bitshift);
+    maybe_subtract(out, n, temp, byteshift, bitshift);
     bitshift--;
     if (bitshift == 0) {
       bitshift = 7;
@@ -122,14 +157,16 @@ void rsa_perform(const unsigned char *e, const int e_length,
 
 int main(int argc, char *argv[]) {
 	unsigned char a_num[] = {0x12, 0x34, 0xab, 0xff};
-	unsigned char b_num[] = {0x01, 0x03, 0x72, 0xea};
+	unsigned char b_num[] = {0x01, 0x03};
 	unsigned char out_num[sizeof(a_num)+sizeof(b_num)];
+  unsigned char temp_num[sizeof(out_num)];
   bignum a = {a_num, sizeof(a_num)};
   bignum b = {b_num, sizeof(b_num)};
   bignum out = {out_num, sizeof(out_num)};
+  bignum temp = {temp_num, sizeof(temp_num)};
 	int i;
 
-	multiply(&out, &a, &b);
+	bignum_mod(&out, &a, &b, &temp);
 	for (i = 0; i < out.length; i++) {
 					printf("%02x", out.num[i]);
 	}
