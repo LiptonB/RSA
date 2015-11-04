@@ -15,6 +15,16 @@ typedef struct bignum {
 				unsigned int length;
 } bignum;
 
+void bignum_print(bignum *bn, char *label) {
+  int i;
+  printf("%s0x", label);
+  for (i = 0; i < bn->length; i++) {
+					printf("%02x", bn->num[i]);
+	}
+	printf("\n");
+}
+
+
 /* multiply: multiplies in1 and in2, returns result in out.
  *  in1: bignum of length k1
  *  in2: bignum of length k2
@@ -49,10 +59,10 @@ void bignum_copy(bignum *dst, bignum *src) {
 
 int maybe_subtract(bignum *out, bignum *n, bignum *temp,
     int byteshift, int bitshift) {
-  int index;
+  int n_index;
   int out_index;
-  halfword borrow;
-  halfword combined;
+  halfword borrow = 0;
+  halfword effective_nbyte;
   halfwordsigned result = 0;
 
   assert(out->length >= n->length + byteshift);
@@ -60,18 +70,23 @@ int maybe_subtract(bignum *out, bignum *n, bignum *temp,
 
   bignum_copy(temp, out);
 
-  for (index = n->length-1; index >= 0; index--) {
-    combined = n->num[index] << bitshift;
-    if (index < n->length-1) {
-      combined |= n->num[index+1] >> (8-bitshift);
+  for (out_index = out->length-1-byteshift; out_index >= 0; out_index--) {
+    n_index = out_index - (out->length - n->length) + byteshift;
+    if (n_index >= 0) {
+      effective_nbyte = n->num[n_index] << bitshift;
+      if (n_index < n->length-1) {
+        effective_nbyte |= n->num[n_index+1] >> (8-bitshift);
+      }
+    } else {
+      effective_nbyte = 0;
     }
 
-    borrow = 0;
-    out_index = out->length - n->length - byteshift + index;
-    result = out->num[out_index] - combined - borrow;
+    result = out->num[out_index] - effective_nbyte - borrow;
     if (result < 0) {
       result += 1<<(8*sizeof(halfword));
       borrow = 1;
+    } else {
+      borrow = 0;
     }
     out->num[out_index] = result;
   }
@@ -134,10 +149,10 @@ void bignum_mod(bignum *out, bignum *t, bignum *n, bignum *temp) {
     byteshift--;
   }
 
-  while(byteshift > 0 && bitshift > 0) {
+  while(byteshift >= 0) {
     maybe_subtract(out, n, temp, byteshift, bitshift);
     bitshift--;
-    if (bitshift == 0) {
+    if (bitshift < 0) {
       bitshift = 7;
       byteshift--;
     }
@@ -156,19 +171,15 @@ void rsa_perform(const unsigned char *e, const int e_length,
 */
 
 int main(int argc, char *argv[]) {
-	unsigned char a_num[] = {0x12, 0x34, 0xab, 0xff};
-	unsigned char b_num[] = {0x01, 0x03};
-	unsigned char out_num[sizeof(a_num)+sizeof(b_num)];
+	unsigned char a_num[] = {0x12, 0x34, 0xab, 0xff, 0x27, 0x3c};
+	unsigned char b_num[] = {0x01, 0x27, 0xf2};
+	unsigned char out_num[sizeof(a_num)];
   unsigned char temp_num[sizeof(out_num)];
   bignum a = {a_num, sizeof(a_num)};
   bignum b = {b_num, sizeof(b_num)};
   bignum out = {out_num, sizeof(out_num)};
   bignum temp = {temp_num, sizeof(temp_num)};
-	int i;
 
 	bignum_mod(&out, &a, &b, &temp);
-	for (i = 0; i < out.length; i++) {
-					printf("%02x", out.num[i]);
-	}
-	printf("\n");
+	bignum_print(&out, "");
 }
