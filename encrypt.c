@@ -35,8 +35,11 @@ void bignum_multiply(bignum *out, const bignum *in1, const bignum *in2) {
   int j;
   halfword C;
   word intermediate;
-  assert(out->length >= in1->length + in2->length);
   int offset = out->length - in1->length - in2->length + 1;
+
+  assert(out->length >= in1->length + in2->length);
+  assert(out != in1);
+  assert(out != in2);
 
   memset(out->num, 0, out->length);
   for (i = in2->length-1; i >= 0; i--) {
@@ -93,6 +96,7 @@ int maybe_subtract(bignum *out, bignum *n, bignum *temp,
 
   // If the result is negative, we need to undo the subtraction
   if (borrow == 1) {
+    // TODO: Might be possible to swap pointers instead of copying
     bignum_copy(out, temp);
   }
 
@@ -149,12 +153,35 @@ void bignum_mod(bignum *out, bignum *t, bignum *n, bignum *temp) {
     byteshift--;
   }
 
-  while(byteshift >= 0) {
+  while (byteshift >= 0) {
     maybe_subtract(out, n, temp, byteshift, bitshift);
     bitshift--;
     if (bitshift < 0) {
       bitshift = 7;
       byteshift--;
+    }
+  }
+}
+
+void bignum_modexp(bignum *out, bignum *M, bignum *e, bignum *n, bignum *temp1, bignum *temp2) {
+  memset(out->num, 0, out->length);
+  out->num[out->length - 1] = 1;
+
+  int e_byte;
+  int e_bit;
+  find_topbit(e, &e_byte, &e_bit);
+
+  while (e_byte >= 0) {
+    bignum_multiply(temp1, out, out);
+    bignum_mod(out, temp1, n, temp2);
+    if (e->num[e_byte] & 1<<e_bit) {
+      bignum_multiply(temp1, out, M);
+      bignum_mod(out, temp1, n, temp2);
+    }
+    e_bit--;
+    if (e_bit < 0) {
+      e_bit = 7;
+      e_byte--;
     }
   }
 }
@@ -171,15 +198,19 @@ void rsa_perform(const unsigned char *e, const int e_length,
 */
 
 int main(int argc, char *argv[]) {
-	unsigned char a_num[] = {0x12, 0x34, 0xab, 0xff, 0x27, 0x3c};
-	unsigned char b_num[] = {0x01, 0x27, 0xf2};
-	unsigned char out_num[sizeof(a_num)];
-  unsigned char temp_num[sizeof(out_num)];
+	unsigned char a_num[] = {0x12, 0x34};
+	unsigned char e_num[] = {0x03};
+  unsigned char n_num[] = {0x05, 0xea};
+	unsigned char out_num[2*sizeof(n_num)];
+  unsigned char temp1_num[sizeof(out_num)];
+  unsigned char temp2_num[sizeof(out_num)];
   bignum a = {a_num, sizeof(a_num)};
-  bignum b = {b_num, sizeof(b_num)};
+  bignum e = {e_num, sizeof(e_num)};
+  bignum n = {n_num, sizeof(n_num)};
   bignum out = {out_num, sizeof(out_num)};
-  bignum temp = {temp_num, sizeof(temp_num)};
+  bignum temp1 = {temp1_num, sizeof(temp1_num)};
+  bignum temp2 = {temp2_num, sizeof(temp2_num)};
 
-	bignum_mod(&out, &a, &b, &temp);
+  bignum_modexp(&out, &a, &e, &n, &temp1, &temp2);
 	bignum_print(&out, "");
 }
