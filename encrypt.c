@@ -225,21 +225,19 @@ void bignum_modexp(bignum *out, bignum *M, bignum *e, bignum *n, bignum *temp1, 
 
 int main(int argc, char *argv[]) {
 	unsigned char a_num[] = {0x12, 0x34};
-	unsigned char e_num[] = {0x04};
-  unsigned char n_num[] = {0x05, 0xea};
-	unsigned char out_num[2*sizeof(n_num)];
+	unsigned char out_num[2*sizeof(key_n)];
   unsigned char temp1_num[sizeof(out_num)];
   unsigned char temp2_num[sizeof(out_num)];
   bignum a = {a_num, sizeof(a_num), 0};
-  bignum e = {e_num, sizeof(e_num), 0};
-  bignum n = {n_num, sizeof(n_num), 0};
+  bignum e = {key_e, sizeof(key_e), 0};
+  bignum n = {key_n, sizeof(key_n), 0};
   bignum out = {out_num, sizeof(out_num), 0};
   bignum temp1 = {temp1_num, sizeof(temp1_num), 0};
   bignum temp2 = {temp2_num, sizeof(temp2_num), 0};
 
-  bignum_truncate(&out);
-  bignum_truncate(&temp1);
-  bignum_truncate(&temp2);
+  //bignum_truncate(&out);
+  //bignum_truncate(&temp1);
+  //bignum_truncate(&temp2);
 
   bignum_modexp(&out, &a, &e, &n, &temp1, &temp2);
 	bignum_print(&out, "");
