@@ -111,7 +111,7 @@ void bignum_copy(bignum *dst, bignum *src) {
 
   memcpy(&dst->num[dst->length - src_size], &src->num[src->offset], src_size);
   memset(dst->num, 0, dst->length - src_size);
-  bignum_truncate(dst);
+  dst->offset = dst->length - src_size;
 }
 
 int maybe_subtract(bignum *out, bignum *n, bignum *temp,
@@ -132,7 +132,7 @@ int maybe_subtract(bignum *out, bignum *n, bignum *temp,
     if (n_index >= 0) {
       effective_nbyte |= bignum_index(n, n_index) << bitshift;
     }
-    if (n_index < bignum_size(n)-1) {
+    if (n_index >= -1 && n_index < bignum_size(n)-1) {
       effective_nbyte |= bignum_index(n, n_index+1) >> (8-bitshift);
     }
 
@@ -208,17 +208,21 @@ void bignum_modexp(bignum *out, bignum *M, bignum *e, bignum *n, bignum *temp1, 
 
   find_topbit(e, &e_byte, &e_bit);
 
-  while (e_byte >= 0) {
+  while (e_byte < bignum_size(e)) {
     bignum_multiply(temp1, out, out);
+    //bignum_print(temp1, "1: ");
     bignum_mod(out, temp1, n, temp2);
+    //bignum_print(out, "2: ");
     if (bignum_index(e, e_byte) & 1<<e_bit) {
       bignum_multiply(temp1, out, M);
+      //bignum_print(temp1, "3: ");
       bignum_mod(out, temp1, n, temp2);
+      //bignum_print(out, "4: ");
     }
     e_bit--;
     if (e_bit < 0) {
       e_bit = 7;
-      e_byte--;
+      e_byte++;
     }
   }
 }
