@@ -1,8 +1,11 @@
 .PHONY: all
-all: keygen encrypt
+all: keygen encrypt check
 
 keygen: keygen.c
 	gcc -o keygen keygen.c -lcrypto
+
+check: check.c
+	gcc -o check check.c -lcrypto
 
 encrypt: encrypt.c key.c
 	gcc -g -o encrypt encrypt.c

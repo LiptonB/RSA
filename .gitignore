@@ -30,6 +30,7 @@
 keygen
 test
 encrypt
+check
 
 # Debug files
 *.dSYM/
