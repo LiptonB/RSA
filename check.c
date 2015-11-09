@@ -11,6 +11,7 @@ int main() {
   FILE *fp = fopen("key.pub.pem", "r");
   if(PEM_read_RSAPublicKey(fp, &keypair, NULL, NULL) == NULL) {
     ERR_print_errors_fp(stderr);
+    return 1;
   }
   fclose(fp);
 
@@ -21,13 +22,17 @@ int main() {
     return 1;
   }
   int i;
-  RSA_public_encrypt(sizeof(a_num), a_num, to, keypair, RSA_NO_PADDING);
 
-  printf("RSA_public_encrypt: 0x");
-  for (i = 0; i < size; i++) {
-					printf("%02x", to[i]);
-	}
-	printf("\n");
+  if (RSA_public_encrypt(sizeof(a_num), a_num, to, keypair, RSA_NO_PADDING) == -1) {
+    printf("Could not use RSA_public_encrypt:\n");
+    ERR_print_errors_fp(stderr);
+  } else {
+    printf("RSA_public_encrypt: 0x");
+    for (i = 0; i < size; i++) {
+            printf("%02x", to[i]);
+    }
+    printf("\n");
+  }
 
   BIGNUM *n = BN_new();
   BIGNUM *e = BN_new();
