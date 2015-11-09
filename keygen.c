@@ -36,10 +36,10 @@ int main(int argc, char *argv[]) {
   fprint_array(fp, "iqmp", keypair->d);
   fclose(fp);
 
-  fp = fopen("key.pub.pem", "w");
+  fp = fopen("key.priv.pem", "w");
   PEM_write_RSAPrivateKey(fp, keypair, NULL, NULL, 0, NULL, NULL);
   fclose(fp);
-  fp = fopen("key.priv.pem", "w");
+  fp = fopen("key.pub.pem", "w");
   PEM_write_RSAPublicKey(fp, keypair);
   fclose(fp);
   return 0;
