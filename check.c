@@ -4,6 +4,7 @@
 #include <openssl/err.h>
 #include <openssl/bn.h>
 #include <stdio.h>
+#include <string.h>
 #include "key.c"
 
 int main() {
@@ -17,13 +18,16 @@ int main() {
 
 	unsigned char a_num[] = {0x12, 0x34};
   size_t size = RSA_size(keypair);
-  unsigned char *to;
-  if ((to = malloc(size)) == NULL) {
+  unsigned char *to, *from;
+  if ((to = malloc(size)) == NULL || (from = malloc(size)) == NULL) {
     return 1;
   }
+
+  memset(from, 0, size);
+  memcpy(from+size-sizeof(a_num), a_num, sizeof(a_num));
   int i;
 
-  if (RSA_public_encrypt(sizeof(a_num), a_num, to, keypair, RSA_NO_PADDING) == -1) {
+  if (RSA_public_encrypt(size, from, to, keypair, RSA_NO_PADDING) == -1) {
     printf("Could not use RSA_public_encrypt:\n");
     ERR_print_errors_fp(stderr);
   } else {
