@@ -42,8 +42,9 @@ void bignum_zero(bignum *bn) {
 
 void find_topbit(const bignum *bn, int *topbyte, int *topbit) {
   halfword temp;
+  int size = bignum_size(bn);
 
-  for (*topbyte = 0; *topbyte < bignum_size(bn); (*topbyte)++) {
+  for (*topbyte = 0; *topbyte < size; (*topbyte)++) {
     if (bignum_index(bn, *topbyte) != 0) {
       break;
     }
@@ -68,8 +69,11 @@ void bignum_truncate(bignum *bn) {
 
 void bignum_print(bignum *bn, char *label) {
   int i;
+  int size = bignum_size(bn);
+
   printf("%s0x", label);
-  for (i = 0; i < bignum_size(bn); i++) {
+
+  for (i = 0; i < size; i++) {
 					printf("%02x", bignum_index(bn, i));
 	}
 	printf("\n");
@@ -85,7 +89,6 @@ void bignum_multiply(bignum *out, const bignum *in1, const bignum *in2) {
   int j;
   halfword C;
   word intermediate;
-  //int offset = bignum_size(out) - bignum_size(in1) - bignum_size(in2) + 1;
 
   assert(out != in1);
   assert(out != in2);
@@ -121,18 +124,20 @@ int maybe_subtract(bignum *out, bignum *n, bignum *temp,
   halfword borrow = 0;
   halfword effective_nbyte;
   halfwordsigned result = 0;
+  int out_size = bignum_size(out);
+  int n_size = bignum_size(n);
 
-  assert(bignum_size(out) >= bignum_size(n) + byteshift);
+  assert(out_size >= n_size + byteshift);
 
   bignum_copy(temp, out);
 
-  for (out_index = bignum_size(out)-1-byteshift; out_index >= 0; out_index--) {
-    n_index = out_index - (bignum_size(out) - bignum_size(n)) + byteshift;
+  for (out_index = out_size-1-byteshift; out_index >= 0; out_index--) {
+    n_index = out_index - (out_size - n_size) + byteshift;
     effective_nbyte = 0;
     if (n_index >= 0) {
       effective_nbyte |= bignum_index(n, n_index) << bitshift;
     }
-    if (n_index >= -1 && n_index < bignum_size(n)-1) {
+    if (n_index >= -1 && n_index < n_size-1) {
       effective_nbyte |= bignum_index(n, n_index+1) >> (8-bitshift);
     }
 
@@ -202,13 +207,14 @@ void bignum_mod(bignum *out, bignum *t, bignum *n, bignum *temp) {
 void bignum_modexp(bignum *out, bignum *M, bignum *e, bignum *n, bignum *temp1, bignum *temp2) {
   int e_byte;
   int e_bit;
+  int e_size = bignum_size(e);
 
   bignum_setsize(out, 1);
   bignum_set(out, 0, 1);
 
   find_topbit(e, &e_byte, &e_bit);
 
-  while (e_byte < bignum_size(e)) {
+  while (e_byte < e_size) {
     bignum_multiply(temp1, out, out);
     //bignum_print(temp1, "1: ");
     bignum_mod(out, temp1, n, temp2);
