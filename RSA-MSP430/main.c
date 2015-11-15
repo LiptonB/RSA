@@ -1,20 +1,27 @@
 #include <msp430.h>
+#include <stdlib.h>
 #include "encrypt.h"
 #include "key.h"
 
-unsigned char input_num[] = {0x12, 0x34};
+const unsigned char input_num[] = {0x12, 0x34};
+const bignum in = {input_num, sizeof(input_num), 0};
 
 int main(void) {
     WDTCTL = WDTPW | WDTHOLD;	// Stop watchdog timer
-    unsigned char out_num[key_n_size<<1];
-    unsigned char temp1_num[sizeof(out_num)];
-    unsigned char temp2_num[sizeof(out_num)];
-    bignum in = {input_num, sizeof(input_num), 0};
+    size_t out_size = key_n_size << 1;
+    unsigned char *out_num = malloc(out_size);
+    unsigned char *temp1_num = malloc(out_size);
+    unsigned char *temp2_num = malloc(out_size);
+
+    if (out_num == NULL || temp1_num == NULL || temp2_num == NULL) {
+    	return 1;
+    }
+
     bignum e = {key_e, key_e_size, 0};
     bignum n = {key_n, key_n_size, 0};
-    bignum out = {out_num, sizeof(out_num), 0};
-    bignum temp1 = {temp1_num, sizeof(temp1_num), 0};
-    bignum temp2 = {temp2_num, sizeof(temp2_num), 0};
+    bignum out = {out_num, out_size, 0};
+    bignum temp1 = {temp1_num, out_size, 0};
+    bignum temp2 = {temp2_num, out_size, 0};
 
     bignum_modexp(&out, &in, &e, &n, &temp1, &temp2);
 

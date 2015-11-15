@@ -14,6 +14,6 @@ typedef struct bignum {
 	unsigned int offset;
 } bignum;
 
-#endif
+void bignum_modexp(bignum *out, const bignum *M, const bignum *e, const bignum *n, bignum *temp1, bignum *temp2);
 
-void bignum_modexp(bignum *out, bignum *M, bignum *e, bignum *n, bignum *temp1, bignum *temp2);
+#endif
