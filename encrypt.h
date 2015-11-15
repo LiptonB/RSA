@@ -15,5 +15,10 @@ typedef struct bignum {
 } bignum;
 
 void bignum_modexp(bignum *out, const bignum *M, const bignum *e, const bignum *n, bignum *temp1, bignum *temp2);
+void bignum_truncate(bignum *bn);
+
+#ifdef WITH_PRINTF
+void bignum_print(bignum *bn, char *label);
+#endif
 
 #endif
