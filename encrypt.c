@@ -1,16 +1,22 @@
-#include <assert.h>
-#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include "encrypt.h"
 
+#ifdef WITH_PRINTF
+#include <assert.h>
+#include <stdio.h>
+#define RSA_ASSERT(a) assert(a)
+#else
+#define RSA_ASSERT(a)
+#endif
+
 void bignum_set(bignum *bn, int index, halfword val) {
-  assert(bn->offset + index < bn->length);
+  RSA_ASSERT(bn->offset + index < bn->length);
   bn->num[index+bn->offset] = val;
 }
 
 halfword bignum_index(const bignum *bn, int index) {
-  assert(bn->offset + index < bn->length);
+  RSA_ASSERT(bn->offset + index < bn->length);
   return bn->num[bn->offset + index];
 }
 
@@ -19,7 +25,7 @@ int bignum_size(const bignum *bn) {
 }
 
 void bignum_setsize(bignum *bn, int size) {
-  assert(size <= bn->length);
+  RSA_ASSERT(size <= bn->length);
   bn->offset = bn->length - size;
 }
 
@@ -54,6 +60,7 @@ void bignum_truncate(bignum *bn) {
   bn->offset = topbyte;
 }
 
+#ifdef WITH_PRINTF
 void bignum_print(bignum *bn, char *label) {
   int i;
   int size = bignum_size(bn);
@@ -65,6 +72,7 @@ void bignum_print(bignum *bn, char *label) {
 	}
 	printf("\n");
 }
+#endif
 
 /* multiply: multiplies in1 and in2, returns result in out.
  *  in1: bignum of length k1
@@ -77,8 +85,8 @@ void bignum_multiply(bignum *out, const bignum *in1, const bignum *in2) {
   halfword C;
   word intermediate;
 
-  assert(out != in1);
-  assert(out != in2);
+  RSA_ASSERT(out != in1);
+  RSA_ASSERT(out != in2);
 
   bignum_setsize(out, bignum_size(in1) + bignum_size(in2));
   bignum_zero(out);
@@ -94,17 +102,17 @@ void bignum_multiply(bignum *out, const bignum *in1, const bignum *in2) {
   }
 }
 
-void bignum_copy(bignum *dst, bignum *src) {
+void bignum_copy(bignum *dst, const bignum *src) {
   // TODO: this might be wrong if length is measured in halfwords, not bytes
   int src_size = bignum_size(src);
-  assert(dst->length >= src_size);
+  RSA_ASSERT(dst->length >= src_size);
 
   memcpy(&dst->num[dst->length - src_size], &src->num[src->offset], src_size);
   memset(dst->num, 0, dst->length - src_size);
   dst->offset = dst->length - src_size;
 }
 
-int maybe_subtract(bignum *out, bignum *n, bignum *temp,
+int maybe_subtract(bignum *out, const bignum *n, bignum *temp,
     int byteshift, int bitshift) {
   int n_index;
   int out_index;
@@ -114,7 +122,7 @@ int maybe_subtract(bignum *out, bignum *n, bignum *temp,
   int out_size = bignum_size(out);
   int n_size = bignum_size(n);
 
-  assert(out_size >= n_size + byteshift);
+  RSA_ASSERT(out_size >= n_size + byteshift);
 
   bignum_copy(temp, out);
 
@@ -155,7 +163,7 @@ int maybe_subtract(bignum *out, bignum *n, bignum *temp,
  *    completion)
  *  temp: bignum of the same length as out
  */
-void bignum_mod(bignum *out, bignum *t, bignum *n, bignum *temp) {
+void bignum_mod(bignum *out, const bignum *t, const bignum *n, bignum *temp) {
   // TODO: byteshift should probably become haflwordshift, etc., but we'll need
   // to be able to read an arbitrary halfword out of a bignum - or can we do
   // that already?
@@ -166,7 +174,7 @@ void bignum_mod(bignum *out, bignum *t, bignum *n, bignum *temp) {
   int n_topbyte;
   int n_topbit;
 
-  assert(temp->length >= bignum_size(t));
+  RSA_ASSERT(temp->length >= bignum_size(t));
 
   bignum_copy(out, t);
 
@@ -191,7 +199,7 @@ void bignum_mod(bignum *out, bignum *t, bignum *n, bignum *temp) {
   bignum_truncate(out);
 }
 
-void bignum_modexp(bignum *out, bignum *M, bignum *e, bignum *n, bignum *temp1, bignum *temp2) {
+void bignum_modexp(bignum *out, const bignum *M, const bignum *e, const bignum *n, bignum *temp1, bignum *temp2) {
   int e_byte;
   int e_bit;
   int e_size = bignum_size(e);
