@@ -1,0 +1,1 @@
+"./encrypt.obj" "./key.obj" "./main.obj" "../lnk_msp430f2274.cmd" -l"libc.a" 
