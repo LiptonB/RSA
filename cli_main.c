@@ -1,19 +1,21 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "encrypt.h"
 #include "key.h"
 
 int main(int argc, char *argv[]) {
-	unsigned char input_num[128];
+  unsigned char input_num[128];
   char input_str[258];
-	unsigned char out_num[2*key_n_size];
-  unsigned char temp1_num[sizeof(out_num)];
-  unsigned char temp2_num[sizeof(out_num)];
+  size_t buffer_size = 2 * key_n_size;
+  unsigned char *out_num = malloc(buffer_size);
+  unsigned char *temp1_num = malloc(buffer_size);
+  unsigned char *temp2_num = malloc(buffer_size);
   bignum in = {input_num, sizeof(input_num), 0};
   bignum e = {key_e, key_e_size, 0};
   bignum d = {key_d, key_d_size, 0};
   bignum n = {key_n, key_n_size, 0};
-  bignum out = {out_num, sizeof(out_num), 0};
+  bignum out = {out_num, buffer_size, 0};
   bignum temp1 = {temp1_num, sizeof(temp1_num), 0};
   bignum temp2 = {temp2_num, sizeof(temp2_num), 0};
   int str_idx, num_idx;
@@ -30,5 +32,5 @@ int main(int argc, char *argv[]) {
   bignum_print(&in, "input: ");
 
   bignum_modexp(&out, &in, &e, &n, &temp1, &temp2);
-	bignum_print(&out, "");
+  bignum_print(&out, "");
 }

@@ -3,8 +3,10 @@
 #include "encrypt.h"
 #include "key.h"
 
-unsigned char input_num[] = {0x12, 0x34};
-bignum in = {input_num, sizeof(input_num), 0};
+const unsigned char input_val[] = {0x12, 0x34};
+
+unsigned char input_num[128];
+bignum in = {input_num, sizeof(input_num), sizeof(input_num)-sizeof(input_val)};
 volatile int timer;
 
 #pragma vector=TIMERA0_VECTOR
@@ -15,6 +17,8 @@ __interrupt void inc_timer(void) {
 #define BIGNUM_SIZE 256
 
 int main(void) {
+	unsigned int i;
+
     WDTCTL = WDTPW | WDTHOLD;	// Stop watchdog timer
 
     // Make system clock as fast as it will go
@@ -36,6 +40,10 @@ int main(void) {
     bignum out = {out_num, BIGNUM_SIZE, 0};
     bignum temp1 = {temp1_num, BIGNUM_SIZE, 0};
     bignum temp2 = {temp2_num, BIGNUM_SIZE, 0};
+
+    for (i = 0; i < sizeof(input_val); i++) {
+    	bignum_set(&in, i, input_val[i]);
+    }
 
     // Set up and start 256KHz timer
     TACTL = TASSEL_2 | ID_3;
