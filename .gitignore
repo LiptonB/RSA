@@ -34,3 +34,9 @@ check
 
 # Debug files
 *.dSYM/
+
+# CCS build artifacts
+*.launch
+*.pp
+*.map
+*_linkInfo.xml
