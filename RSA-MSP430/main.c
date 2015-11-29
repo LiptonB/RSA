@@ -3,8 +3,8 @@
 #include "encrypt.h"
 #include "key.h"
 
-//const unsigned char input_val[] = {0x12, 0x34};
-const unsigned char input_val[] = {0x70, 0x27, 0xc2, 0xa4, 0x9b, 0x88, 0xd8,
+const unsigned char input_val[] = {0x12, 0x34};
+/*const unsigned char input_val[] = {0x70, 0x27, 0xc2, 0xa4, 0x9b, 0x88, 0xd8,
 		0x11, 0x38, 0x35, 0x5c, 0x09, 0x91, 0xc9, 0x71, 0x48, 0x20, 0x6e, 0xf0,
 		0x4a, 0x04, 0x7f, 0x73, 0x9a, 0x2f, 0x31, 0x17, 0x07, 0x2e, 0x7e, 0xa7,
 		0x9c, 0xbc, 0x54, 0x1e, 0xb7, 0x9c, 0xbf, 0x91, 0xf5, 0x48, 0xcc, 0x88,
@@ -15,11 +15,12 @@ const unsigned char input_val[] = {0x70, 0x27, 0xc2, 0xa4, 0x9b, 0x88, 0xd8,
 		0x09, 0xc0, 0x10, 0xbc, 0x75, 0xb3, 0xb7, 0xe3, 0xab, 0x50, 0x7a, 0x4e,
 		0xb4, 0x29, 0xe0, 0xc2, 0x4c, 0x2e, 0x49, 0x37, 0xc9, 0x9d, 0xdf, 0x15,
 		0xda, 0x5e, 0xd4, 0x34, 0xec, 0xff, 0x92, 0xed, 0x4a, 0x16, 0x88, 0x53,
-		0xc3};
+		0xc3};*/
 
 unsigned char input_num[128];
 bignum in = {input_num, sizeof(input_num), sizeof(input_num)-sizeof(input_val)};
 volatile int timer;
+volatile int timeenc, timedec;
 
 #pragma vector=TIMERA0_VECTOR
 __interrupt void inc_timer(void) {
@@ -43,10 +44,6 @@ int main(void) {
     unsigned char temp1_num[BIGNUM_SIZE];
     unsigned char temp2_num[BIGNUM_SIZE];
 
-    if (out_num == NULL || temp1_num == NULL || temp2_num == NULL) {
-    	return 1;
-    }
-
     bignum e = {key_d, key_d_size, 0};
     bignum n = {key_n, key_n_size, 0};
     bignum out = {out_num, BIGNUM_SIZE, 0};
@@ -64,10 +61,25 @@ int main(void) {
     TACCTL0 |= CCIE;
     timer = 0;
     _BIS_SR(GIE);
-    TACTL |= MC_2;
 
+    TACTL |= MC_2;
     bignum_modexp(&out, &in, &e, &n, &temp1, &temp2);
     TACTL &= ~(MC0 | MC1);
+
+    // set up next trial
+    bignum_copy(&in, &out);
+    e.num = key_e;
+    e.length = key_e_size;
+	e.offset = 0;
+
+    timeenc = timer;
+    timer = 0;
+    TAR = 0;
+
+    TACTL |= MC_2;
+    bignum_modexp(&out, &in, &e, &n, &temp1, &temp2);
+    TACTL &= ~(MC0 | MC1);
+    timedec = timer;
 
 	return 0;
 }

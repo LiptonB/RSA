@@ -17,6 +17,7 @@ typedef struct bignum {
 void bignum_modexp(bignum *out, const bignum *M, const bignum *e, const bignum *n, bignum *temp1, bignum *temp2);
 void bignum_truncate(bignum *bn);
 void bignum_set(bignum *bn, int index, halfword val);
+void bignum_copy(bignum *dst, const bignum *src);
 
 #ifdef WITH_PRINTF
 void bignum_print(bignum *bn, char *label);
