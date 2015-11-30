@@ -54,15 +54,15 @@ int main(void) {
     	bignum_set(&in, i, input_val[i]);
     }
 
-    // Set up and start 256KHz timer
+    // Set up and start 250KHz timer
     TACTL = TASSEL_2 | ID_3;
     TAR = 0;
-    TACCR0 = 0;
     TACCTL0 |= CCIE;
     timer = 0;
     _BIS_SR(GIE);
 
-    TACTL |= MC_2;
+    TACTL |= MC_1;
+    TACCR0 = 50000; // Will be hit 5 times per second
     bignum_modexp(&out, &in, &e, &n, &temp1, &temp2);
     TACTL &= ~(MC0 | MC1);
 

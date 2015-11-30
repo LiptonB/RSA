@@ -45,5 +45,10 @@
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/key.h</locationURI>
 		</link>
+		<link>
+			<name>profiling.h</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/profiling.h</locationURI>
+		</link>
 	</linkedResources>
 </projectDescription>
