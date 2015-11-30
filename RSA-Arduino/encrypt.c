@@ -1,6 +1,5 @@
 #include <string.h>
 #include <stdlib.h>
-#include <Arduino.h>
 #include "encrypt.h"
 
 #define PROFILING 0
