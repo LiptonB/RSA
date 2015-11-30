@@ -18,7 +18,7 @@ void fprint_array(FILE *fp, char *name, BIGNUM *bn) {
       }
     }
     fprintf(fp, "};\n");
-    fprintf(fp, "const size_t key_%s_size = sizeof(key_%s);\n);", name, name);
+    fprintf(fp, "const size_t key_%s_size = sizeof(key_%s);\n", name, name);
 
     free(buf);
   }
@@ -26,6 +26,8 @@ void fprint_array(FILE *fp, char *name, BIGNUM *bn) {
 
 int main(int argc, char *argv[]) {
   FILE *fp = fopen("key.c", "w");
+  fprintf(fp, "#include <stddef.h>\n\n");
+
   RSA *keypair = RSA_generate_key(1024, 65537, NULL, NULL);
   fprint_array(fp, "n", keypair->n);
   fprint_array(fp, "e", keypair->e);
