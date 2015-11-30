@@ -2,6 +2,11 @@
 #include "encrypt.h"
 #include "key.h"
 
+#define PROFILING 0
+#define PROFILING_MAIN 1
+#define MAXPROF 15
+#include "profiling.h"
+
 const unsigned char input_val[] = {0x12, 0x34};
 /*const unsigned char input_val[] = {0x70, 0x27, 0xc2, 0xa4, 0x9b, 0x88, 0xd8,
     0x11, 0x38, 0x35, 0x5c, 0x09, 0x91, 0xc9, 0x71, 0x48, 0x20, 0x6e, 0xf0,
@@ -65,11 +70,41 @@ void timer_start(void) {
 }
 
 void timer_stop(void) {
-  TCCR1B &= (1 << CS12) | (1 << CS10);
+  TCCR1B &= ~((1 << CS12) | (1 << CS10));
 }
 
 ISR(TIMER1_COMPA_vect) {
   timer++;
+}
+
+// Inspired by http://www.dudley.nu/arduino_profiling/
+void profile_start(void) {
+  cli();
+  //Timer2 Settings:  Timer Prescaler /1024
+  // Select clock source: internal I/O clock
+  ASSR &= ~(1<<AS2);
+  // Reset registers
+  TCCR2A = 0;
+  TCCR2B = 0;
+  TIMSK2 = 0;
+  TCNT2 = 0;
+  
+  // Configure timer2 in CTC mode
+  TCCR2A |= (1<<WGM21);
+
+  // Get interrupts for reaching compare value
+  TIMSK2 |= (1<<OCIE2A);
+  sei();
+  
+  // Configure interrupt frequency
+  TCCR2B |= (1<<CS22) | (1<<CS20); // Divide by 128
+  OCR2A = 125; // Frequency: 16000000 / (128 * 125) = 1000
+}
+
+ISR(TIMER2_COMPA_vect) {
+  #if PROFILING
+    update_profiling_data();
+  #endif
 }
 
 void setup(void) {
@@ -90,11 +125,15 @@ void setup(void) {
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
-
+  
   for (i = 0; i < sizeof(input_val); i++) {
     bignum_set(&in, i, input_val[i]);
   }
 
+#if PROFILING
+  profile_start();
+#endif
+  
   bignum_print(&in, "In: ");
   timer_start();
   bignum_modexp(&out, &in, &e, &n, &temp1, &temp2);
@@ -103,6 +142,10 @@ void setup(void) {
   Serial.print(timer);
   Serial.print("\n");
   bignum_print(&out, "Out: ");
+
+#if PROFILING
+  dump_profiling_data();
+#endif
 
   bignum_copy(&in, &out);
   e.num = key_d;
@@ -116,6 +159,10 @@ void setup(void) {
   Serial.print(timer);
   Serial.print("\n");
   bignum_print(&out, "Out2: ");
+
+#if PROFILING
+  dump_profiling_data();
+#endif
 }
 
 void loop() {

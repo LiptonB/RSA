@@ -3,6 +3,10 @@
 #include <Arduino.h>
 #include "encrypt.h"
 
+#define PROFILING 0
+#define MAXPROF 15
+#include "profiling.h"
+
 #ifdef WITH_PRINTF
 #include <assert.h>
 #include <stdio.h>
@@ -90,6 +94,7 @@ void bignum_multiply(bignum *out, const bignum *in1, const bignum *in2) {
   halfword C;
   word intermediate;
 
+  PF(4);
   RSA_ASSERT(out != in1);
   RSA_ASSERT(out != in2);
 
@@ -124,15 +129,23 @@ int maybe_subtract(bignum *out, const bignum *n, bignum *temp,
   halfword borrow = 0;
   halfword effective_nbyte;
   halfwordsigned result = 0;
+
+  PF(3);
   int out_size = bignum_size(out);
   int n_size = bignum_size(n);
 
+  PF(5);
   RSA_ASSERT(out_size >= n_size + byteshift);
 
   bignum_copy(temp, out);
 
+  PF(3);
+
   for (out_index = out_size-1-byteshift; out_index >= 0; out_index--) {
+    PF(7);
     n_index = out_index - (out_size - n_size) + byteshift;
+
+    PF(8);
     effective_nbyte = 0;
     if (n_index >= 0) {
       effective_nbyte |= bignum_index(n, n_index) << bitshift;
@@ -141,18 +154,22 @@ int maybe_subtract(bignum *out, const bignum *n, bignum *temp,
       effective_nbyte |= bignum_index(n, n_index+1) >> (8-bitshift);
     }
 
+    PF(9);
     result = bignum_index(out, out_index) - effective_nbyte - borrow;
+    PF(10);
     if (result < 0) {
       result += 1<<(8*sizeof(halfword));
       borrow = 1;
     } else {
       borrow = 0;
     }
+    PF(11);
     bignum_set(out, out_index, result);
   }
 
   // If the result is negative, we need to undo the subtraction
   if (borrow == 1) {
+    PF(6);
     // TODO: Might be possible to swap pointers instead of copying
     bignum_copy(out, temp);
   }
@@ -179,6 +196,7 @@ void bignum_mod(bignum *out, const bignum *t, const bignum *n, bignum *temp) {
   int n_topbyte;
   int n_topbit;
 
+  PF(0);
   RSA_ASSERT(temp->length >= bignum_size(t));
 
   bignum_copy(out, t);
@@ -192,8 +210,10 @@ void bignum_mod(bignum *out, const bignum *t, const bignum *n, bignum *temp) {
     byteshift--;
   }
 
+  PF(1);
   while (byteshift >= 0) {
     maybe_subtract(out, n, temp, byteshift, bitshift);
+    PF(2);
     bitshift--;
     if (bitshift < 0) {
       bitshift = 7;
