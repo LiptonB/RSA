@@ -128,6 +128,7 @@ int maybe_subtract(bignum *out, const bignum *n, bignum *temp,
   int out_index;
   halfword borrow = 0;
   halfword effective_nbyte;
+  halfword lookup_byte;
   halfwordsigned result = 0;
 
   PF(3);
@@ -147,11 +148,12 @@ int maybe_subtract(bignum *out, const bignum *n, bignum *temp,
 
     PF(8);
     effective_nbyte = 0;
-    if (n_index >= 0) {
-      effective_nbyte |= bignum_index(n, n_index) << bitshift;
-    }
     if (n_index >= -1 && n_index < n_size-1) {
-      effective_nbyte |= bignum_index(n, n_index+1) >> (8-bitshift);
+      effective_nbyte |= lookup_byte >> (8-bitshift);
+    }
+    if (n_index >= 0) {
+      lookup_byte = bignum_index(n, n_index);
+      effective_nbyte |= lookup_byte << bitshift;
     }
 
     PF(9);
