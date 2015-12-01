@@ -1,5 +1,5 @@
 DEFS = -D WITH_PRINTF
-DEBUG = -g
+DEBUG = 
 
 .PHONY: all clean
 all: keygen encrypt check
