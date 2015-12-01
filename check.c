@@ -5,7 +5,7 @@
 #include <openssl/bn.h>
 #include <stdio.h>
 #include <string.h>
-#include "key.c"
+#include "key.h"
 
 int main() {
   RSA *keypair = NULL;
@@ -37,15 +37,17 @@ int main() {
     }
     printf("\n");
   }
+  free(to);
 
-  BIGNUM *n = BN_new();
-  BIGNUM *e = BN_new();
-  BIGNUM *a = BN_new();
-  BIGNUM *r = BN_new();
   BN_CTX *ctx = BN_CTX_new();
+	BN_CTX_start(ctx);
+  BIGNUM *n = BN_CTX_get(ctx);
+  BIGNUM *e = BN_CTX_get(ctx);
+  BIGNUM *a = BN_CTX_get(ctx);
+  BIGNUM *r = BN_CTX_get(ctx);
   
-  BN_bin2bn(key_n, sizeof(key_n), n);
-  BN_bin2bn(key_e, sizeof(key_e), e);
+  BN_bin2bn(key_n, key_n_size, n);
+  BN_bin2bn(key_e, key_e_size, e);
   BN_bin2bn(a_num, sizeof(a_num), a);
 
   BN_mod_exp(r, a, e, n, ctx);
@@ -54,10 +56,64 @@ int main() {
   BN_print_fp(stdout, r);
   printf("\n");
 
-  free(to);
-  BN_free(n);
-  BN_free(e);
-  BN_free(a);
-  BN_free(r);
+	BIGNUM *d = BN_CTX_get(ctx);
+	BIGNUM *p = BN_CTX_get(ctx);
+	BIGNUM *q = BN_CTX_get(ctx);
+	BIGNUM *dmp1 = BN_CTX_get(ctx);
+	BIGNUM *dmq1 = BN_CTX_get(ctx);
+	BIGNUM *iqmp = BN_CTX_get(ctx);
+	BIGNUM *m1 = BN_CTX_get(ctx);
+	BIGNUM *m2 = BN_CTX_get(ctx);
+	BN_bin2bn(key_d, key_d_size, d);
+	BN_bin2bn(key_p, key_p_size, p);
+	BN_bin2bn(key_q, key_q_size, q);
+	BN_bin2bn(key_dmp1, key_dmp1_size, dmp1);
+	BN_bin2bn(key_dmq1, key_dmq1_size, dmq1);
+	BN_bin2bn(key_iqmp, key_iqmp_size, iqmp);
+
+	BN_mod_exp(m1, a, dmp1, p, ctx);
+	BN_mod_exp(m2, a, dmq1, q, ctx);
+	printf("m1: 0x");
+	BN_print_fp(stdout, m1);
+	printf("\n");
+	printf("m2: 0x");
+	BN_print_fp(stdout, m2);
+	printf("\n");
+
+	BN_mod_sub(r, m1, m2, p, ctx);
+	printf("(m1 - m2) mod p: 0x");
+	BN_print_fp(stdout, r);
+	printf("\n");
+
+	BN_mod_mul(r, r, iqmp, p, ctx);
+	printf("((m1 - m2) * iqmp) mod p: 0x");
+	BN_print_fp(stdout, r);
+	printf("\n");
+
+	BN_mul(r, r, q, ctx);
+	printf("(((m1 - m2) * iqmp) mod p) * q: 0x");
+	BN_print_fp(stdout, r);
+	printf("\n");
+
+	BN_add(r, r, m2);
+	printf("m2 + (((m1 - m2) * iqmp) mod p) * q: 0x");
+	BN_print_fp(stdout, r);
+	printf("\n");
+
+  BN_mod_exp(r, a, d, n, ctx);
+	printf("a^d mod n: 0x");
+	BN_print_fp(stdout, r);
+	printf("\n");
+
+  BN_mod(m1, r, p, ctx);
+	printf("a^d mod p: 0x");
+	BN_print_fp(stdout, m1);
+	printf("\n");
+  BN_mod(m2, r, q, ctx);
+	printf("a^d mod q: 0x");
+	BN_print_fp(stdout, m2);
+	printf("\n");
+
+	BN_CTX_end(ctx);
   BN_CTX_free(ctx);
 }
