@@ -16,8 +16,8 @@ int main(int argc, char *argv[]) {
   bignum d = {key_d, key_d_size, 0};
   bignum n = {key_n, key_n_size, 0};
   bignum out = {out_num, buffer_size, 0};
-  bignum temp1 = {temp1_num, sizeof(temp1_num), 0};
-  bignum temp2 = {temp2_num, sizeof(temp2_num), 0};
+  bignum temp1 = {temp1_num, buffer_size, 0};
+  bignum temp2 = {temp2_num, buffer_size, 0};
   int str_idx, num_idx;
 
   fgets(input_str, sizeof(input_str), stdin);
@@ -33,4 +33,8 @@ int main(int argc, char *argv[]) {
 
   bignum_modexp(&out, &in, &e, &n, &temp1, &temp2);
   bignum_print(&out, "");
+
+  free(out_num);
+  free(temp1_num);
+  free(temp2_num);
 }
