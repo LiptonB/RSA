@@ -25,6 +25,9 @@ void bignum_set(bignum *bn, int index, halfword val) {
 
 halfword bignum_index(const bignum *bn, int index) {
   RSA_ASSERT(bn->offset + index < bn->length);
+  if (index < 0) {
+    return bn->sign ? 0xff : 0;
+  }
   return bn->num[bn->offset + index];
 }
 
@@ -69,11 +72,11 @@ void bignum_truncate(bignum *bn) {
 }
 
 #ifdef WITH_PRINTF
-void bignum_print(bignum *bn, char *label) {
+void bignum_print(const bignum *bn, char *label) {
   int i;
   int size = bignum_size(bn);
 
-  printf("%s0x", label);
+  printf("%s%s0x", label, bn->sign ? "-" : "");
 
   for (i = 0; i < size; i++) {
 					printf("%02x", bignum_index(bn, i));
@@ -254,6 +257,124 @@ void bignum_modexp(bignum *out, const bignum *M, const bignum *e, const bignum *
   }
 }
 
+void bignum_add(bignum *out, const bignum *a, const bignum *b) {
+  unsigned int size_a = bignum_size(a);
+  unsigned int size_b = bignum_size(b);
+  unsigned int size;
+  int sizediff;
+  int i;
+  unsigned int a_shift;
+  unsigned int b_shift;
+  halfword carry = 0;
+  halfword a_byte;
+  halfword b_byte;
+  word result;
+
+  if (size_a >= size_b) {
+    size = size_a + 1;
+  } else {
+    size = size_b + 1;
+  }
+  sizediff = size - bignum_size(out);
+  bignum_setsize(out, size);
+  for (i = 0; i < sizediff; i++) {
+    bignum_set(out, i, out->sign ? 0xff : 0);
+  }
+  // recompute shifts in case one of the inputs is used for output as well
+  a_shift = size - bignum_size(a);
+  b_shift = size - bignum_size(b);
+
+  // TODO: this may be very slow on 8-bit CPUs as it uses 16-bit arithmetic
+  for (i = size-1; i >= 0; i--) {
+    a_byte = bignum_index(a, i-a_shift);
+    b_byte = bignum_index(b, i-b_shift);
+    result = a_byte + b_byte + carry;
+    if (result > 255) {
+      result -= 256;
+      carry = 1;
+    } else {
+      carry = 0;
+    }
+    bignum_set(out, i, result);
+  }
+}
+
+void bignum_neg(bignum *out, const bignum *in) {
+  unsigned int size = bignum_size(in);
+  int i;
+  word result;
+  int carry = 1;
+
+  bignum_setsize(out, size);
+
+  // 2's complement negation. Starting from least significant, invert each byte
+  // and add 1. Once we find a byte that doesn't overflow when 1 is added, we
+  // can stop propagating the carry upwards.
+  for (i = size-1; i >= 0; i--) {
+    result = bignum_index(in, i) ^ 255;
+    if (carry) {
+      result += 1;
+      if (result > 255) {
+        result -= 256;
+        carry = 1;
+      } else {
+        carry = 0;
+      }
+    }
+    bignum_set(out, i, result);
+  }
+
+  out->sign = !in->sign;
+}
+
+void bignum_signed_add(bignum *out, const bignum *a, const bignum *b) {
+  bignum_add(out, a, b);
+  out->sign = bignum_index(out, 0);
+  out->offset++;
+}
+
+void bignum_unsigned_add(bignum *out, const bignum *a, const bignum *b) {
+  bignum_add(out, a, b);
+  out->offset++;
+}
+
+void bignum_subtract_mod(bignum *out, const bignum *a, const bignum *b,
+    const bignum *n, bignum *temp) {
+  //bignum_print(a, "a: ");
+  //bignum_print(b, "b: ");
+  bignum_neg(temp, b);
+  //bignum_print(temp, "-b: ");
+  bignum_signed_add(out, a, temp);
+  //bignum_print(out, "a + (-b): ");
+  if (out->sign) {
+    //bignum_print(n, "add n: ");
+    bignum_signed_add(out, out, n); // add modulus to bring above 0
+    RSA_ASSERT(!out->sign);
+  };
+}
+
+void bignum_modexp_crt(bignum *out, const bignum *M, const bignum *p,
+    const bignum *q, const bignum *dmp1, const bignum *dmq1,
+    const bignum *iqmp, bignum *temp1, bignum *temp2, bignum *temp3) {
+  // m1 = m^dmp1 mod p
+  bignum_modexp(out, M, dmp1, p, temp1, temp2);
+  // m2 = m^dmq1 mod q
+  bignum_modexp(temp3, M, dmq1, q, temp1, temp2);
+  // out = m2 + (((m1 - m2) * iqmp) mod p) * q
+  //bignum_print(out, "m1: ");
+  //bignum_print(temp3, "m2: ");
+  bignum_subtract_mod(out, out, temp3, p, temp1);
+  //bignum_print(out, "(m2 - m1) mod p: ");
+  bignum_multiply(temp2, out, iqmp);
+  //bignum_print(temp2, "(m2 - m1) * iqmp: ");
+  bignum_mod(out, temp2, p, temp1);
+  //bignum_print(out, "((m2 - m1) * iqmp) mod p: ");
+  bignum_multiply(temp2, out, q);
+  //bignum_print(temp2, "(((m2 - m1) * iqmp) mod p) * q: ");
+  bignum_unsigned_add(out, temp2, temp3);
+}
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
+
