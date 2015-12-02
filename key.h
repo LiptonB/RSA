@@ -19,5 +19,13 @@ extern const unsigned char key_dmq1[];
 extern const size_t key_dmq1_size;
 extern const unsigned char key_iqmp[];
 extern const size_t key_iqmp_size;
+extern const bignum e;
+extern const bignum d;
+extern const bignum n;
+extern const bignum p;
+extern const bignum q;
+extern const bignum dmp1;
+extern const bignum dmq1;
+extern const bignum iqmp;
 
 #endif

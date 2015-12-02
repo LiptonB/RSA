@@ -3,6 +3,13 @@
 #include "encrypt.h"
 #include "key.h"
 
+#define USING_CRT 1
+#if USING_CRT
+#define BIGNUM_SIZE 128
+#else
+#define BIGNUM_SIZE 256
+#endif
+
 const unsigned char input_val[] = {0x12, 0x34};
 /*const unsigned char input_val[] = {0x70, 0x27, 0xc2, 0xa4, 0x9b, 0x88, 0xd8,
 		0x11, 0x38, 0x35, 0x5c, 0x09, 0x91, 0xc9, 0x71, 0x48, 0x20, 0x6e, 0xf0,
@@ -22,12 +29,21 @@ bignum in = {input_num, sizeof(input_num), sizeof(input_num)-sizeof(input_val)};
 volatile int timer;
 volatile int timeenc, timedec;
 
+unsigned char out_num[BIGNUM_SIZE];
+unsigned char temp1_num[BIGNUM_SIZE];
+unsigned char temp2_num[BIGNUM_SIZE];
+#if USING_CRT
+unsigned char temp3_num[BIGNUM_SIZE];
+bignum temp3 = {temp3_num, BIGNUM_SIZE, 0, 0};
+#endif
+bignum out = {out_num, BIGNUM_SIZE, 0, 0};
+bignum temp1 = {temp1_num, BIGNUM_SIZE, 0, 0};
+bignum temp2 = {temp2_num, BIGNUM_SIZE, 0, 0};
+
 #pragma vector=TIMERA0_VECTOR
 __interrupt void inc_timer(void) {
 	timer++;
 }
-
-#define BIGNUM_SIZE 256
 
 int main(void) {
 	unsigned int i;
@@ -39,16 +55,6 @@ int main(void) {
     BCSCTL1 = CALBC1_16MHZ;
     DCOCTL = CALDCO_16MHZ;
     BCSCTL2 = SELM_0 | DIVM_0 | DIVS_3;
-
-    unsigned char out_num[BIGNUM_SIZE];
-    unsigned char temp1_num[BIGNUM_SIZE];
-    unsigned char temp2_num[BIGNUM_SIZE];
-
-    bignum e = {key_d, key_d_size, 0};
-    bignum n = {key_n, key_n_size, 0};
-    bignum out = {out_num, BIGNUM_SIZE, 0};
-    bignum temp1 = {temp1_num, BIGNUM_SIZE, 0};
-    bignum temp2 = {temp2_num, BIGNUM_SIZE, 0};
 
     for (i = 0; i < sizeof(input_val); i++) {
     	bignum_set(&in, i, input_val[i]);
@@ -63,23 +69,26 @@ int main(void) {
 
     TACTL |= MC_1;
     TACCR0 = 50000; // Will be hit 5 times per second
+#if USING_CRT
+    bignum_modexp_crt(&out, &in, &p, &q, &dmp1, &dmq1, &iqmp, &temp1, &temp2, &temp3);
+#else
     bignum_modexp(&out, &in, &e, &n, &temp1, &temp2);
+#endif
     TACTL &= ~(MC0 | MC1);
+    timeenc = timer;
 
+#if !USING_CRT
     // set up next trial
     bignum_copy(&in, &out);
-    e.num = key_e;
-    e.length = key_e_size;
-	e.offset = 0;
 
-    timeenc = timer;
     timer = 0;
     TAR = 0;
 
     TACTL |= MC_2;
-    bignum_modexp(&out, &in, &e, &n, &temp1, &temp2);
+    bignum_modexp(&out, &in, &d, &n, &temp1, &temp2);
     TACTL &= ~(MC0 | MC1);
     timedec = timer;
+#endif
 
 	return 0;
 }
