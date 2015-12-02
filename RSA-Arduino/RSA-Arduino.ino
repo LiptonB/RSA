@@ -7,6 +7,13 @@
 #define MAXPROF 15
 #include "profiling.h"
 
+#define USING_CRT 1
+#if USING_CRT
+#define BIGNUM_SIZE 128
+#else
+#define BIGNUM_SIZE 256
+#endif
+
 const unsigned char input_val[] = {0x12, 0x34};
 /*const unsigned char input_val[] = {0x70, 0x27, 0xc2, 0xa4, 0x9b, 0x88, 0xd8,
     0x11, 0x38, 0x35, 0x5c, 0x09, 0x91, 0xc9, 0x71, 0x48, 0x20, 0x6e, 0xf0,
@@ -25,9 +32,30 @@ unsigned char input_num[128];
 bignum in = {input_num, sizeof(input_num), sizeof(input_num)-sizeof(input_val)};
 unsigned int timer;
 
-#define BIGNUM_SIZE 256
+unsigned char out_num[BIGNUM_SIZE];
+unsigned char temp1_num[BIGNUM_SIZE];
+unsigned char temp2_num[BIGNUM_SIZE];
+#if USING_CRT
+unsigned char temp3_num[BIGNUM_SIZE];
+#endif
 
-void bignum_print(bignum *bn, char *label) {
+#if !USING_CRT
+const bignum e = {(halfword*)key_e, key_e_size, 0, 0};
+const bignum d = {(halfword*)key_d, key_d_size, 0, 0};
+const bignum n = {(halfword*)key_n, key_n_size, 0, 0};
+#else
+const bignum p = {(halfword*)key_p, key_p_size, 0, 0};
+const bignum q = {(halfword*)key_q, key_q_size, 0, 0};
+const bignum dmp1 = {(halfword*)key_dmp1, key_dmp1_size, 0, 0};
+const bignum dmq1 = {(halfword*)key_dmq1, key_dmq1_size, 0, 0};
+const bignum iqmp = {(halfword*)key_iqmp, key_iqmp_size, 0, 0};
+bignum temp3 = {temp3_num, BIGNUM_SIZE, 0, 0};
+#endif
+bignum out = {out_num, BIGNUM_SIZE, 0, 0};
+bignum temp1 = {temp1_num, BIGNUM_SIZE, 0, 0};
+bignum temp2 = {temp2_num, BIGNUM_SIZE, 0, 0};
+
+void bignum_print(const bignum *bn, char *label) {
   int i;
   int size = bignum_size(bn);
   Serial.print(label);
@@ -109,16 +137,6 @@ ISR(TIMER2_COMPA_vect) {
 
 void setup(void) {
   // put your setup code here, to run once:
-  unsigned char out_num[BIGNUM_SIZE];
-  unsigned char temp1_num[BIGNUM_SIZE];
-  unsigned char temp2_num[BIGNUM_SIZE];
-
-  bignum e = {key_e, key_e_size, 0};
-  bignum n = {key_n, key_n_size, 0};
-  bignum out = {out_num, BIGNUM_SIZE, 0};
-  bignum temp1 = {temp1_num, BIGNUM_SIZE, 0};
-  bignum temp2 = {temp2_num, BIGNUM_SIZE, 0};
-
   unsigned int i, t;
 
   Serial.begin(9600);
@@ -136,7 +154,11 @@ void setup(void) {
   
   bignum_print(&in, "In: ");
   timer_start();
-  bignum_modexp(&out, &in, &e, &n, &temp1, &temp2);
+#if USING_CRT
+  bignum_modexp_crt(&out, &in, &p, &q, &dmp1, &dmq1, &iqmp, &temp1, &temp2, &temp3);
+#else
+  bignum_modexp(&out, &in, &d, &n, &temp1, &temp2);
+#endif
   timer_stop();
   Serial.print("Time elapsed: ");
   Serial.print(timer);
@@ -147,10 +169,8 @@ void setup(void) {
   dump_profiling_data();
 #endif
 
+#if !USING_CRT
   bignum_copy(&in, &out);
-  e.num = key_d;
-  e.length = key_d_size;
-  e.offset = 0;
 
   timer_start();
   bignum_modexp(&out, &in, &e, &n, &temp1, &temp2);
@@ -162,6 +182,7 @@ void setup(void) {
 
 #if PROFILING
   dump_profiling_data();
+#endif
 #endif
 }
 
